@@ -14,7 +14,7 @@ cd "$PKG_DIR/glog" || die "cd fail"
 
 # Use a known compatible version
 # N.B. More recent versions (v0.5.0.rcx) failed to work with mcrouter.
-git reset --hard v0.4.0
+gitEnsureTreeish v0.4.0
 
 autoreconf --install
 LDFLAGS="-Wl,-rpath=$INSTALL_DIR/lib,--enable-new-dtags -L$INSTALL_DIR/lib $LDFLAGS" \

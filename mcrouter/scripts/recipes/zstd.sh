@@ -13,7 +13,7 @@ fi
 cd "$PKG_DIR/zstd" || die "cd fail"
 
 # Use a known compatible version
-git checkout v1.4.9
+gitEnsureTreeish v1.4.9
 
 cmake -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" build/cmake/
 make -j "$(nproc)" && make install

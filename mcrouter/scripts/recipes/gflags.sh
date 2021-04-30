@@ -15,7 +15,7 @@ cd "$PKG_DIR/gflags" || die "cd fail"
 # Use a known compatible version
 # There hasn't been a release in years, this is just the (currently) most
 # recent commit.
-git checkout 827c769e5fc98e0f2a34c47cef953cc6328abced
+gitEnsureTreeish 827c769e5fc98e0f2a34c47cef953cc6328abced
 
 LDFLAGS="-Wl,-rpath=$INSTALL_DIR/lib,--enable-new-dtags -L$INSTALL_DIR/lib $LDFLAGS" \
     CPPFLAGS="-I$INSTALL_DIR/include -DGOOGLE_GLOG_DLL_DECL='' $CPPFLAGS" \

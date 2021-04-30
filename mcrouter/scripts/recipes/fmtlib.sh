@@ -13,7 +13,7 @@ fi
 cd "$PKG_DIR/fmt" || die "cd failed"
 
 # Use a known compatible version
-git checkout 7.1.3
+gitEnsureTreeish 7.1.3
 
 mkdir "$PKG_DIR/fmt/build"
 cd "$PKG_DIR/fmt/build" || die "cd fmt failed"

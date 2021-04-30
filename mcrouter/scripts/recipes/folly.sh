@@ -13,7 +13,7 @@ fi
 cd "$PKG_DIR/folly" || die "cd fail"
 
 # Use a known compatible version
-git checkout v2021.04.26.00
+gitEnsureTreeish v2021.04.26.00
 
 # There is an issue when compiling folly on aarch64 when libunwind is available.
 # The build configuration does expose a direct way to avoid using libunwind, and we
