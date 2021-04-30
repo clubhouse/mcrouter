@@ -14,6 +14,6 @@ LD_LIBRARY_PATH="$INSTALL_DIR/lib:$LD_LIBRARY_PATH" \
     LDFLAGS="-L$INSTALL_DIR/lib $LDFLAGS" \
     CPPFLAGS="-I$INSTALL_DIR/include $CPPFLAGS" \
     FBTHRIFT_BIN="$INSTALL_DIR/bin/" \
-    ./configure --prefix="$INSTALL_DIR" --includedir="$INSTALL_DIR/include"
+    ./configure --prefix="$INSTALL_DIR" --with-boost-libdir="$INSTALL_DIR/lib"
 
 make -j "$(nproc)" && make install
