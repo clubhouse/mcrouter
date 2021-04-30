@@ -6,16 +6,14 @@
 
 source common.sh
 
-if [ ! -d "$PKG_DIR/fizz" ]; then
-  git clone https://github.com/facebookincubator/fizz
+if [ ! -d "$PKG_DIR/zstd" ]; then
+  git clone https://github.com/facebook/zstd
 fi
 
-cd "$PKG_DIR/fizz" || die "cd fail"
+cd "$PKG_DIR/zstd" || die "cd fail"
 
 # Use a known compatible version
-gitEnsureTreeish v2021.04.26.00
+gitEnsureTreeish v1.4.9
 
-cd "$PKG_DIR/fizz/fizz/" || die "cd fail"
-
-cmake . -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" -DBUILD_TESTS=OFF
+cmake -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" build/cmake/
 make -j "$(nproc)" && make install
