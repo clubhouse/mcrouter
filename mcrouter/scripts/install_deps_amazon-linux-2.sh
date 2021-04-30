@@ -6,11 +6,6 @@
 
 set -ex
 
-BASE_DIR="$1"
-TARGET="${2:-all}"
-
-[ -n "$BASE_DIR" ] || ( echo "Base dir missing"; exit 1 )
-
 sudo yum install -y epel-release
 
 sudo yum groupinstall -y "Development Tools"
@@ -61,17 +56,11 @@ sudo yum install -y \
 #  xz-libz \
 #  zlib \
 
-
-# Set CC and CXX to unambiguously choose compiler.
-export CC=/usr/bin/gcc
-export CXX=/usr/bin/c++
-
-sudo ln -sf /usr/bin/cmake3 /usr/bin/cmake
+# Link cmake -> cmake3 so the recipes can just refer to cmake.
+if [ ! -e /usr/bin/cmake ]; then
+    sudo ln -sf /usr/bin/cmake3 /usr/bin/cmake
+fi
 
 # Automake available by default is 1.13 and unsupported for mcrouter.
 # Install automake-1.15 from Fedora
 yum info automake-1.15-4.fc23 || sudo yum install -y "http://archives.fedoraproject.org/pub/archive/fedora/linux/releases/23/Everything/x86_64/os/Packages/a/automake-1.15-4.fc23.noarch.rpm"
-
-cd "$(dirname "$0")" || ( echo "cd fail"; exit 1 )
-
-./get_and_build_by_make.sh "Makefile_amazon-linux-2" "$BASE_DIR" "$TARGET"
