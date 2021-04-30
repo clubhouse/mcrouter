@@ -53,8 +53,7 @@ sudo yum install -y \
 #  lz4 \
 #  snappy \
 #  openssl \
-#  xz-libz \
-#  zlib \
+#  xz-libs
 
 # Link cmake -> cmake3 so the recipes can just refer to cmake.
 if [ ! -e /usr/bin/cmake ]; then
