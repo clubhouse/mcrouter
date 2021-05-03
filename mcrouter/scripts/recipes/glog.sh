@@ -17,7 +17,7 @@ cd "$PKG_DIR/glog" || die "cd fail"
 gitEnsureTreeish v0.4.0
 
 autoreconf --install
-LDFLAGS="-Wl,-rpath=$INSTALL_DIR/lib,--enable-new-dtags -L$INSTALL_DIR/lib $LDFLAGS" \
+LDFLAGS="-Wl,-rpath=$INSTALL_DIR/lib,--enable-new-dtags $LDFLAGS" \
     CPPFLAGS="-I$INSTALL_DIR/include -DGOOGLE_GLOG_DLL_DECL='' $CPPFLAGS" \
     ./configure --prefix="$INSTALL_DIR" &&
     make -j "$(nproc)" && make install

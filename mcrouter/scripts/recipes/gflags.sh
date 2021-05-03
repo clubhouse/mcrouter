@@ -17,7 +17,7 @@ cd "$PKG_DIR/gflags" || die "cd fail"
 # recent commit.
 gitEnsureTreeish 827c769e5fc98e0f2a34c47cef953cc6328abced
 
-LDFLAGS="-Wl,-rpath=$INSTALL_DIR/lib,--enable-new-dtags -L$INSTALL_DIR/lib $LDFLAGS" \
+LDFLAGS="-Wl,-rpath=$INSTALL_DIR/lib,--enable-new-dtags $LDFLAGS" \
     CPPFLAGS="-I$INSTALL_DIR/include -DGOOGLE_GLOG_DLL_DECL='' $CPPFLAGS" \
     cmake -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" -DBUILD_SHARED_LIBS=YES -S . -B build -G "Unix Makefiles"
 

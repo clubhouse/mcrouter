@@ -18,5 +18,6 @@ gitEnsureTreeish v2021.04.26.00
 cd "$PKG_DIR/fbthrift/build" || die "cd fbthrift failed"
 
 CXXFLAGS="$CXXFLAGS -fPIC" \
+LDFLAGS="-Wl,-rpath=$INSTALL_DIR/lib $LDFLAGS" \
 cmake .. -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR"
 make -j "$(nproc)" && make install

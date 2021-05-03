@@ -36,7 +36,7 @@ cd "$(dirname "$0")" || ( echo "cd fail"; exit 1 )
 REPO_BASE_DIR="$(cd ../../ && pwd)" || die "Couldn't determine repo top dir"
 export REPO_BASE_DIR
 
-export LDFLAGS="-ljemalloc $LDFLAGS"
+export LDFLAGS="-L$INSTALL_DIR/lib -ljemalloc $LDFLAGS"
 # Set CC and CXX to unambiguously choose compiler.
 export CC=/usr/bin/gcc
 export CXX=/usr/bin/c++

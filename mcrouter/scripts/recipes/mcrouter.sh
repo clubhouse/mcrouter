@@ -11,7 +11,6 @@ cd "$SCRIPT_DIR/../.." || die "cd fail"
 autoreconf --install
 LD_LIBRARY_PATH="$INSTALL_DIR/lib:$LD_LIBRARY_PATH" \
     LD_RUN_PATH="$INSTALL_DIR/lib:$LD_RUN_PATH" \
-    LDFLAGS="-L$INSTALL_DIR/lib $LDFLAGS" \
     CPPFLAGS="-I$INSTALL_DIR/include $CPPFLAGS" \
     FBTHRIFT_BIN="$INSTALL_DIR/bin/" \
     ./configure --prefix="$INSTALL_DIR" --with-boost-libdir="$INSTALL_DIR/lib"
