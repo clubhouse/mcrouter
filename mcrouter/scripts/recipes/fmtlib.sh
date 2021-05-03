@@ -15,10 +15,9 @@ cd "$PKG_DIR/fmt" || die "cd failed"
 # Use a known compatible version
 gitEnsureTreeish 7.1.3
 
-mkdir "$PKG_DIR/fmt/build"
+mkdir -p "$PKG_DIR/fmt/build"
 cd "$PKG_DIR/fmt/build" || die "cd fmt failed"
 
 CXXFLAGS="$CXXFLAGS -fPIC" \
   cmake .. -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR"
 make -j "$(nproc)" && make install
-

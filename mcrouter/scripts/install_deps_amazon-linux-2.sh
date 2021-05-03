@@ -20,7 +20,6 @@ sudo yum install -y \
     gcc-c++\
     git \
     gtest-devel \
-    jemalloc-devel \
     libevent-devel \
     libsodium-devel \
     libtool \
@@ -46,7 +45,6 @@ sudo yum install -y \
 #sudo yum install -y \
 #  bzip2 \
 #  double-conversion \
-#  jemalloc \
 #  libevent \
 #  libsodium \
 #  libunwind \
