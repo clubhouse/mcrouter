@@ -13,6 +13,7 @@ function gitEnsureTreeish {
     git checkout "$1" --
     # Ensures that there are edited files in git index or working directory
     git reset --hard HEAD
+    git clean -fdx .
 }
 
 [ -n "$1" ] || die "PKG_DIR missing"
