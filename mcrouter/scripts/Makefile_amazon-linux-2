@@ -53,7 +53,7 @@ all: mcrouter
 deps: .fbthrift-done .folly-done .fizz-done .wangle-done .fmt-done .zstd-done .glog-done .gflags-done .boost-done
 	touch $@
 
-mcrouter: deps
+mcrouter: .fbthrift-done .folly-done .fizz-done .wangle-done .fmt-done .zstd-done .glog-done .gflags-done .boost-done
 	${RECIPES_DIR}/mcrouter.sh $(PKG_DIR) $(INSTALL_DIR) $(INSTALL_AUX_DIR)
 	touch $@
 
