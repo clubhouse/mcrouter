@@ -28,7 +28,7 @@ mkdir -p "$INSTALL_DIR/lib"
 # As a workaround, we just upfront link lib64 -> lib so all dependency artifacts
 # end up in $INSTALL_DIR/lib which that build script *can* find.
 if [ ! -e "$INSTALL_DIR/lib64" ]; then
-    ln -sf "$INSTALL_DIR/lib" "$INSTALL_DIR/lib64"
+    ln -sf lib "$INSTALL_DIR/lib64"
 fi
 
 cd "$(dirname "$0")" || ( echo "cd fail"; exit 1 )
