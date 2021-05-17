@@ -69,4 +69,4 @@ mcrouter: .fbthrift-done .folly-done .fizz-done .wangle-done .fmt-done .zstd-don
 
 archive: mcrouter
 	touch $@
-	tar czfv "mcrouter.$$(git rev-parse --short=12 HEAD).$$(uname -m).tar.gz" -C $(INSTALL_DIR) .
+	tar czfv "mcrouter.$$(git rev-parse --short=12 HEAD).$$(uname -m).tar.gz" -C $(INSTALL_DIR) aux bin lib lib64 share
