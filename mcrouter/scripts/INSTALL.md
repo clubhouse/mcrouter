@@ -8,6 +8,6 @@ N.B These scripts *only* support Amazon Linux 2
 
         MY_INSTALL_DIR=path/to/install/dir
         TARGET=mcrouter
-        ./get_and_build_by_make $MY_INSTALL_DIR mcrouter
+        ./get_and_build_by_make.sh $MY_INSTALL_DIR mcrouter
 
 You can substitute individual dependencies as the value of TARGET in order to debug. 
