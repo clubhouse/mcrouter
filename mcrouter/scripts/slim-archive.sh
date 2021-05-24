@@ -29,4 +29,4 @@ LD_LIBRARY_PATH="${INSTALL_DIR}"/lib ldd "${INSTALL_DIR}"/bin/mcrouter "${INSTAL
     | xargs -I '%' cp '%' "${ARCHIVE_INSTALL_DIR}"/lib
 cp "${INSTALL_DIR}"/bin/mcrouter "${INSTALL_DIR}"/bin/mcpiper "${ARCHIVE_INSTALL_DIR}"/bin/
 
-tar czfv "${ARCHIVE}" -C "${ARCHIVE_INSTALL_DIR}" .
+tar czfv "${ARCHIVE}" -C "${ARCHIVE_INSTALL_DIR}" bin lib
