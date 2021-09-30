@@ -91,7 +91,7 @@ class ThriftTransportBase : public Transport,
   bool connectionTimedOut_{false};
 
   template <class ThriftClient>
-  std::unique_ptr<ThriftClient> createThriftClient();
+  std::optional<ThriftClient> createThriftClient();
 
   /**
    * Resets the client pointer.
@@ -101,6 +101,11 @@ class ThriftTransportBase : public Transport,
 
   template <class F>
   auto sendSyncImpl(F&& sendFunc);
+
+  template <class T>
+  auto makeError(
+      const ConnectionState oldState,
+      const folly::exception_wrapper& ew);
 
  private:
   // AsyncSocket::ConnectCallback overrides
@@ -175,7 +180,8 @@ class ThriftTransportUtil {
 
   void FOLLY_NOINLINE traceResponseImpl(
       carbon::MessageCommon& response,
-      const std::map<std::string, std::string>& responseHeaders);
+      const apache::thrift::transport::THeader::StringToStringMap&
+          responseHeaders);
 #endif
 };
 

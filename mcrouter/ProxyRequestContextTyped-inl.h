@@ -35,7 +35,7 @@ class ProxyRequestContextTypedWithCallback
 
  protected:
   void sendReplyImpl(ReplyT<Request>&& reply) final {
-    auto req = this->req_;
+    auto req = this->typedRequest();
     fiber_local<RouterInfo>::runWithoutLocals(
         [this, req, &reply]() { f_(*this, *req, std::move(reply)); });
   }
@@ -126,23 +126,23 @@ bool precheckRequest(
 template <class RouterInfo, class Request>
 void ProxyRequestContextTyped<RouterInfo, Request>::sendReply(
     ReplyT<Request>&& reply) {
-  if (this->recording()) {
+  if (UNLIKELY(this->recording())) {
     return;
   }
 
-  if (this->replied_) {
+  if (UNLIKELY(this->replied_)) {
     return;
   }
   this->replied_ = true;
   auto result = *reply.result_ref();
 
   sendReplyImpl(std::move(reply));
-  req_ = nullptr;
+  clearTypedRequest();
 
   auto& stats = this->proxy().stats();
   stats.increment(request_replied_stat);
   stats.increment(request_replied_count_stat);
-  if (isErrorResult(result)) {
+  if (UNLIKELY(isErrorResult(result))) {
     stats.increment(request_error_stat);
     stats.increment(request_error_count_stat);
   } else {
@@ -155,7 +155,7 @@ template <class RouterInfo, class Request>
 void ProxyRequestContextTyped<RouterInfo, Request>::startProcessing() {
   std::unique_ptr<ProxyRequestContextTyped<RouterInfo, Request>> self(this);
 
-  if (!detail::precheckRequest(*this, *req_)) {
+  if (!detail::precheckRequest(*this, *typedRequest())) {
     return;
   }
 
@@ -168,7 +168,7 @@ void ProxyRequestContextTyped<RouterInfo, Request>::startProcessing() {
     return;
   }
 
-  this->proxy_.dispatchRequest(*req_, std::move(self));
+  this->proxy_.dispatchRequest(*typedRequest(), std::move(self));
 }
 
 template <class RouterInfo, class Request>

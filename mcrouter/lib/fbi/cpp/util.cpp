@@ -47,7 +47,7 @@ bool determineIfSampleKeyForViolet(
     uint32_t routingKeyHash,
     uint32_t sample_period) {
   assert(sample_period > 0);
-  const uint32_t m = std::numeric_limits<uint32_t>::max();
+  constexpr uint32_t m = std::numeric_limits<uint32_t>::max();
   uint32_t keyHashMax = m / sample_period;
 
   return routingKeyHash <= keyHashMax;
@@ -222,5 +222,27 @@ bool ensureHasPermission(const std::string& path, mode_t mode) {
 
   return true;
 }
+
+bool intervalOverlap(std::vector<std::vector<size_t>>& intervals) {
+  std::sort(
+      intervals.begin(),
+      intervals.end(),
+      [](const std::vector<size_t>& a, const std::vector<size_t>& b) {
+        return a[0] < b[0];
+      });
+  for (size_t i = 1; i < intervals.size(); ++i) {
+    assert(intervals[i - 1].size() == 1 || intervals[i - 1].size() == 2);
+    if ((intervals[i - 1].size() == 1) &&
+        (intervals[i][0] < intervals[i - 1][0])) {
+      return true;
+    } else if (
+        (intervals[i - 1].size() == 2) &&
+        (intervals[i][0] < intervals[i - 1][1])) {
+      return true;
+    }
+  }
+  return false;
+}
+
 } // namespace memcache
 } // namespace facebook

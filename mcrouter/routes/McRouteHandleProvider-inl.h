@@ -25,6 +25,7 @@
 #include "mcrouter/lib/network/SecurityOptions.h"
 #include "mcrouter/lib/network/ThriftTransport.h"
 #include "mcrouter/lib/network/gen/MemcacheRouterInfo.h"
+#include "mcrouter/routes/AllFastestRouteFactory.h"
 #include "mcrouter/routes/AsynclogRoute.h"
 #include "mcrouter/routes/DestinationRoute.h"
 #include "mcrouter/routes/ExtraRouteHandleProviderIf.h"
@@ -41,6 +42,37 @@
 namespace facebook {
 namespace memcache {
 namespace mcrouter {
+
+extern template MemcacheRouterInfo::RouteHandlePtr
+createHashRoute<MemcacheRouterInfo>(
+    const folly::dynamic& json,
+    std::vector<MemcacheRouterInfo::RouteHandlePtr> rh,
+    size_t threadId);
+
+extern template MemcacheRouterInfo::RouteHandlePtr
+makeAllFastestRoute<MemcacheRouterInfo>(
+    RouteHandleFactory<MemcacheRouterInfo::RouteHandleIf>& factory,
+    const folly::dynamic& json);
+
+extern template MemcacheRouterInfo::RouteHandlePtr
+makeFailoverRouteWithFailoverErrorSettings<
+    MemcacheRouterInfo,
+    FailoverRoute,
+    FailoverErrorsSettings>(
+    const folly::dynamic& json,
+    std::vector<MemcacheRouterInfo::RouteHandlePtr> children,
+    FailoverErrorsSettings failoverErrors,
+    const folly::dynamic* jFailoverPolicy);
+
+extern template const std::vector<MemcacheRouterInfo::RouteHandlePtr>&
+McRouteHandleProvider<MemcacheRouterInfo>::makePool(
+    RouteHandleFactory<MemcacheRouteHandleIf>& factory,
+    const PoolFactory::PoolJson& json);
+
+extern template MemcacheRouterInfo::RouteHandlePtr
+McRouteHandleProvider<MemcacheRouterInfo>::makePoolRoute(
+    RouteHandleFactory<MemcacheRouteHandleIf>& factory,
+    const folly::dynamic& json);
 
 template <class RouterInfo>
 std::shared_ptr<typename RouterInfo::RouteHandleIf> makeLoggingRoute(
@@ -266,10 +298,9 @@ McRouteHandleProvider<RouterInfo>::makePool(
 
       auto it = accessPoints_.find(name);
       if (it == accessPoints_.end()) {
-        std::vector<std::shared_ptr<const AccessPoint>> accessPoints;
+        std::unordered_set<std::shared_ptr<const AccessPoint>> accessPoints;
         it = accessPoints_.emplace(name, std::move(accessPoints)).first;
       }
-      it->second.push_back(ap);
       folly::StringPiece nameSp = it->first;
 
       if (ap->getProtocol() == mc_thrift_protocol) {
@@ -283,7 +314,7 @@ McRouteHandleProvider<RouterInfo>::makePool(
             securityMechToString(ap->getSecurityMech()));
 
         using Transport = ThriftTransport<RouterInfo>;
-        destinations.push_back(createDestinationRoute<Transport>(
+        auto destResult = createDestinationRoute<Transport>(
             std::move(ap),
             timeout,
             connectTimeout,
@@ -294,10 +325,12 @@ McRouteHandleProvider<RouterInfo>::makePool(
             poolStatIndex,
             disableRequestDeadlineCheck,
             poolTkoTracker,
-            keepRoutingPrefix));
+            keepRoutingPrefix);
+        it->second.insert(destResult.second);
+        destinations.push_back(std::move(destResult.first));
       } else {
         using Transport = AsyncMcClient;
-        destinations.push_back(createDestinationRoute<Transport>(
+        auto destResult = createDestinationRoute<Transport>(
             std::move(ap),
             timeout,
             connectTimeout,
@@ -308,7 +341,9 @@ McRouteHandleProvider<RouterInfo>::makePool(
             poolStatIndex,
             disableRequestDeadlineCheck,
             poolTkoTracker,
-            keepRoutingPrefix));
+            keepRoutingPrefix);
+        it->second.insert(destResult.second);
+        destinations.push_back(std::move(destResult.first));
       }
     } // servers
 
@@ -368,7 +403,9 @@ McRouteHandleProvider<RouterInfo>::makePool(
 
 template <class RouterInfo>
 template <class Transport>
-typename McRouteHandleProvider<RouterInfo>::RouteHandlePtr
+std::pair<
+    typename McRouteHandleProvider<RouterInfo>::RouteHandlePtr,
+    std::shared_ptr<const AccessPoint>>
 McRouteHandleProvider<RouterInfo>::createDestinationRoute(
     std::shared_ptr<AccessPoint> ap,
     std::chrono::milliseconds timeout,
@@ -384,15 +421,18 @@ McRouteHandleProvider<RouterInfo>::createDestinationRoute(
   auto pdstn = proxy_.destinationMap()->template emplace<Transport>(
       std::move(ap), timeout, qosClass, qosPath, poolTkoTracker);
   pdstn->updateShortestTimeout(connectTimeout, timeout);
+  auto resAp = pdstn->accessPoint();
 
-  return makeDestinationRoute<RouterInfo, Transport>(
-      std::move(pdstn),
-      poolName,
-      indexInPool,
-      poolStatIndex,
-      timeout,
-      disableRequestDeadlineCheck,
-      keepRoutingPrefix);
+  return {
+      makeDestinationRoute<RouterInfo, Transport>(
+          std::move(pdstn),
+          poolName,
+          indexInPool,
+          poolStatIndex,
+          timeout,
+          disableRequestDeadlineCheck,
+          keepRoutingPrefix),
+      std::move(resAp)};
 }
 
 template <class RouterInfo>
@@ -480,7 +520,9 @@ McRouteHandleProvider<RouterInfo>::makePoolRoute(
       if (auto jasynclog = json.get_ptr("asynclog")) {
         needAsynclog = parseBool(*jasynclog, "asynclog");
       }
-      if (auto jname = json.get_ptr("name")) {
+      if (auto jasynclogName = json.get_ptr("asynclog_name")) {
+        asynclogName = parseString(*jasynclogName, "asynclog_name");
+      } else if (auto jname = json.get_ptr("name")) {
         asynclogName = parseString(*jname, "name");
       }
     }

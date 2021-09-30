@@ -16,7 +16,7 @@ class TestAsyncFiles(McrouterTestCase):
     default_route = '/././'
     stat_prefix = 'libmcrouter.mcrouter.0.'
     config = './mcrouter/test/mcrouter_test_basic_1_1_1.json'
-    config_hash = '6bbe796e576bf700f5e3ba8a66d409d5'
+    config_hash = '837ae7d82f2fe7cb785b941dae505811'
     extra_args = ['--stats-logging-interval', '100', '--use-asynclog-version2']
     mock_smc_config = None
 
@@ -113,3 +113,8 @@ class TestAsyncFiles(McrouterTestCase):
         self.assertGreater(os.path.getmtime(file_stat), now)
         self.assertGreater(os.path.getmtime(file_startup_options), now)
         self.assertGreater(os.path.getmtime(file_config_sources), now)
+
+
+class TestNamedAsyncFiles(TestAsyncFiles):
+    config = './mcrouter/test/mcrouter_test_basic_3_1_1.json'
+    config_hash = '37ba14d3319c638d970353f6f3861c68'

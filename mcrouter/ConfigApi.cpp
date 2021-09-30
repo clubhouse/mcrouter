@@ -520,8 +520,8 @@ bool ConfigApi::readFromBackupFile(
     return false;
   }
 
-  LOG(INFO) << "Reading config source " << sourcePrefix << name
-            << " from backup.";
+  VLOG(1) << "Reading config source " << sourcePrefix << name
+          << " from backup.";
   return folly::readFile(filePath.c_str(), contents);
 }
 
@@ -542,6 +542,17 @@ void ConfigApi::enableReadingFromBackupFiles() {
 bool ConfigApi::shouldReadFromBackupFiles() const {
   return readFromBackupFiles_;
 }
+
+std::vector<ConfigApi::PartialUpdate> ConfigApi::releasePartialUpdatesLocked() {
+  return {};
+}
+
+bool ConfigApi::updatePartialConfigSource(
+    std::vector<ConfigApi::PartialUpdate> /*updates*/) {
+  return true;
+}
+
+void ConfigApi::addPartialUpdateForTest(PartialUpdate&) {}
 
 } // namespace mcrouter
 } // namespace memcache

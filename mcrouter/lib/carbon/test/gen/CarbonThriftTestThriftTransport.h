@@ -35,33 +35,31 @@ class ThriftTransportMethods<carbon::test::CarbonThriftTestRouterInfo> : public 
   ThriftTransportMethods() = default;
   virtual ~ThriftTransportMethods() override = default;
 
-void sendSyncHelper(
+folly::Try<apache::thrift::RpcResponseComplete<carbon::test::CustomReply>> sendSyncHelper(
     typename carbon::test::CarbonThriftTestRouterInfo::RouteHandleAsyncClient* thriftClient,
     const carbon::test::CustomRequest& request,
     apache::thrift::RpcOptions& rpcOptions,
-    folly::Try<apache::thrift::RpcResponseComplete<carbon::test::CustomReply>>& reply,
     RpcStatsContext* rpcStatsContext = nullptr) {
   bool needServerLoad = mcrouter::fiber_local<carbon::test::CarbonThriftTestRouterInfo>::getThriftServerLoadEnabled();
   if (UNLIKELY(needServerLoad)) {
     rpcOptions.setWriteHeader(kLoadHeader, kDefaultLoadCounter);
   }
-  const auto& cryptoAuthToken = request.getCryptoAuthToken();
-  if (UNLIKELY(cryptoAuthToken.has_value())) {
+  if (UNLIKELY(request.getCryptoAuthToken().has_value())) {
     rpcOptions.setWriteHeader(
-        std::string{carbon::MessageCommon::kCryptoAuthTokenHeader}, cryptoAuthToken.value());
+        std::string{carbon::MessageCommon::kCryptoAuthTokenHeader}, request.getCryptoAuthToken().value());
   }
 
 #ifndef LIBMC_FBTRACE_DISABLE
   traceRequest(request, rpcOptions);
 #endif
-  reply = thriftClient->sync_complete_customRequest(
-      rpcOptions, request);
+  auto reply = thriftClient->sync_complete_customRequest(
+      std::move(rpcOptions), request);
   if (rpcStatsContext && reply.hasValue()) {
       auto& stats = reply->responseContext.rpcSizeStats;
       rpcStatsContext->requestBodySize = stats.requestSerializedSizeBytes;
       rpcStatsContext->replySizeBeforeCompression = stats.responseSerializedSizeBytes;
       rpcStatsContext->replySizeAfterCompression = stats.responseWireSizeBytes;
-      if (needServerLoad && reply->responseContext.serverLoad) {
+      if (UNLIKELY(needServerLoad && reply->responseContext.serverLoad)) {
         rpcStatsContext->serverLoad = ServerLoad(
             static_cast<int32_t>(*reply->responseContext.serverLoad));
       }
@@ -69,35 +67,34 @@ void sendSyncHelper(
 #ifndef LIBMC_FBTRACE_DISABLE
   traceResponse(request, reply);
 #endif
+  return reply;
 }
 
-void sendSyncHelper(
+folly::Try<apache::thrift::RpcResponseComplete<carbon::test::DummyThriftReply>> sendSyncHelper(
     typename carbon::test::CarbonThriftTestRouterInfo::RouteHandleAsyncClient* thriftClient,
     const carbon::test::DummyThriftRequest& request,
     apache::thrift::RpcOptions& rpcOptions,
-    folly::Try<apache::thrift::RpcResponseComplete<carbon::test::DummyThriftReply>>& reply,
     RpcStatsContext* rpcStatsContext = nullptr) {
   bool needServerLoad = mcrouter::fiber_local<carbon::test::CarbonThriftTestRouterInfo>::getThriftServerLoadEnabled();
   if (UNLIKELY(needServerLoad)) {
     rpcOptions.setWriteHeader(kLoadHeader, kDefaultLoadCounter);
   }
-  const auto& cryptoAuthToken = request.getCryptoAuthToken();
-  if (UNLIKELY(cryptoAuthToken.has_value())) {
+  if (UNLIKELY(request.getCryptoAuthToken().has_value())) {
     rpcOptions.setWriteHeader(
-        std::string{carbon::MessageCommon::kCryptoAuthTokenHeader}, cryptoAuthToken.value());
+        std::string{carbon::MessageCommon::kCryptoAuthTokenHeader}, request.getCryptoAuthToken().value());
   }
 
 #ifndef LIBMC_FBTRACE_DISABLE
   traceRequest(request, rpcOptions);
 #endif
-  reply = thriftClient->sync_complete_thrift_test(
-      rpcOptions, request);
+  auto reply = thriftClient->sync_complete_thrift_test(
+      std::move(rpcOptions), request);
   if (rpcStatsContext && reply.hasValue()) {
       auto& stats = reply->responseContext.rpcSizeStats;
       rpcStatsContext->requestBodySize = stats.requestSerializedSizeBytes;
       rpcStatsContext->replySizeBeforeCompression = stats.responseSerializedSizeBytes;
       rpcStatsContext->replySizeAfterCompression = stats.responseWireSizeBytes;
-      if (needServerLoad && reply->responseContext.serverLoad) {
+      if (UNLIKELY(needServerLoad && reply->responseContext.serverLoad)) {
         rpcStatsContext->serverLoad = ServerLoad(
             static_cast<int32_t>(*reply->responseContext.serverLoad));
       }
@@ -105,35 +102,34 @@ void sendSyncHelper(
 #ifndef LIBMC_FBTRACE_DISABLE
   traceResponse(request, reply);
 #endif
+  return reply;
 }
 
-void sendSyncHelper(
+folly::Try<apache::thrift::RpcResponseComplete<carbon::test::ThriftTestReply>> sendSyncHelper(
     typename carbon::test::CarbonThriftTestRouterInfo::RouteHandleAsyncClient* thriftClient,
     const carbon::test::ThriftTestRequest& request,
     apache::thrift::RpcOptions& rpcOptions,
-    folly::Try<apache::thrift::RpcResponseComplete<carbon::test::ThriftTestReply>>& reply,
     RpcStatsContext* rpcStatsContext = nullptr) {
   bool needServerLoad = mcrouter::fiber_local<carbon::test::CarbonThriftTestRouterInfo>::getThriftServerLoadEnabled();
   if (UNLIKELY(needServerLoad)) {
     rpcOptions.setWriteHeader(kLoadHeader, kDefaultLoadCounter);
   }
-  const auto& cryptoAuthToken = request.getCryptoAuthToken();
-  if (UNLIKELY(cryptoAuthToken.has_value())) {
+  if (UNLIKELY(request.getCryptoAuthToken().has_value())) {
     rpcOptions.setWriteHeader(
-        std::string{carbon::MessageCommon::kCryptoAuthTokenHeader}, cryptoAuthToken.value());
+        std::string{carbon::MessageCommon::kCryptoAuthTokenHeader}, request.getCryptoAuthToken().value());
   }
 
 #ifndef LIBMC_FBTRACE_DISABLE
   traceRequest(request, rpcOptions);
 #endif
-  reply = thriftClient->sync_complete_test(
-      rpcOptions, request);
+  auto reply = thriftClient->sync_complete_test(
+      std::move(rpcOptions), request);
   if (rpcStatsContext && reply.hasValue()) {
       auto& stats = reply->responseContext.rpcSizeStats;
       rpcStatsContext->requestBodySize = stats.requestSerializedSizeBytes;
       rpcStatsContext->replySizeBeforeCompression = stats.responseSerializedSizeBytes;
       rpcStatsContext->replySizeAfterCompression = stats.responseWireSizeBytes;
-      if (needServerLoad && reply->responseContext.serverLoad) {
+      if (UNLIKELY(needServerLoad && reply->responseContext.serverLoad)) {
         rpcStatsContext->serverLoad = ServerLoad(
             static_cast<int32_t>(*reply->responseContext.serverLoad));
       }
@@ -141,35 +137,34 @@ void sendSyncHelper(
 #ifndef LIBMC_FBTRACE_DISABLE
   traceResponse(request, reply);
 #endif
+  return reply;
 }
 
-void sendSyncHelper(
+folly::Try<apache::thrift::RpcResponseComplete<McVersionReply>> sendSyncHelper(
     typename carbon::test::CarbonThriftTestRouterInfo::RouteHandleAsyncClient* thriftClient,
     const McVersionRequest& request,
     apache::thrift::RpcOptions& rpcOptions,
-    folly::Try<apache::thrift::RpcResponseComplete<McVersionReply>>& reply,
     RpcStatsContext* rpcStatsContext = nullptr) {
   bool needServerLoad = mcrouter::fiber_local<carbon::test::CarbonThriftTestRouterInfo>::getThriftServerLoadEnabled();
   if (UNLIKELY(needServerLoad)) {
     rpcOptions.setWriteHeader(kLoadHeader, kDefaultLoadCounter);
   }
-  const auto& cryptoAuthToken = request.getCryptoAuthToken();
-  if (UNLIKELY(cryptoAuthToken.has_value())) {
+  if (UNLIKELY(request.getCryptoAuthToken().has_value())) {
     rpcOptions.setWriteHeader(
-        std::string{carbon::MessageCommon::kCryptoAuthTokenHeader}, cryptoAuthToken.value());
+        std::string{carbon::MessageCommon::kCryptoAuthTokenHeader}, request.getCryptoAuthToken().value());
   }
 
 #ifndef LIBMC_FBTRACE_DISABLE
   traceRequest(request, rpcOptions);
 #endif
-  reply = thriftClient->sync_complete_mcVersion(
-      rpcOptions, request);
+  auto reply = thriftClient->sync_complete_mcVersion(
+      std::move(rpcOptions), request);
   if (rpcStatsContext && reply.hasValue()) {
       auto& stats = reply->responseContext.rpcSizeStats;
       rpcStatsContext->requestBodySize = stats.requestSerializedSizeBytes;
       rpcStatsContext->replySizeBeforeCompression = stats.responseSerializedSizeBytes;
       rpcStatsContext->replySizeAfterCompression = stats.responseWireSizeBytes;
-      if (needServerLoad && reply->responseContext.serverLoad) {
+      if (UNLIKELY(needServerLoad && reply->responseContext.serverLoad)) {
         rpcStatsContext->serverLoad = ServerLoad(
             static_cast<int32_t>(*reply->responseContext.serverLoad));
       }
@@ -177,8 +172,11 @@ void sendSyncHelper(
 #ifndef LIBMC_FBTRACE_DISABLE
   traceResponse(request, reply);
 #endif
+  return reply;
 }
 
+ protected:
+  std::optional<carbon::test::thrift::CarbonThriftTestAsyncClient> thriftClient_;
 };
 
 template <>
@@ -206,20 +204,18 @@ class ThriftTransport<carbon::test::CarbonThriftTestRouterInfo> : public ThriftT
       const carbon::test::CustomRequest& request,
       std::chrono::milliseconds timeout,
       RpcStatsContext* rpcStatsContext = nullptr) {
-    DestructorGuard dg(this);
 
     return sendSyncImpl([this, &request, timeout, rpcStatsContext] {
-      folly::Try<apache::thrift::RpcResponseComplete<carbon::test::CustomReply>> reply;
-      if (auto* thriftClient = getThriftClient()) {
+      auto* thriftClient = getThriftClient();
+      if (LIKELY(thriftClient != nullptr)) {
         auto rpcOptions = getRpcOptions(timeout);
-        sendSyncHelper(thriftClient, request, rpcOptions, reply, rpcStatsContext);
+        return sendSyncHelper(thriftClient, request, rpcOptions, rpcStatsContext);
       } else {
-        reply.emplaceException(
+        return folly::Try<apache::thrift::RpcResponseComplete<carbon::test::CustomReply>>(
             folly::make_exception_wrapper<apache::thrift::transport::TTransportException>(
               apache::thrift::transport::TTransportException::NOT_OPEN,
               "Error creating thrift client."));
       }
-      return reply;
     });
   }
 
@@ -227,20 +223,18 @@ class ThriftTransport<carbon::test::CarbonThriftTestRouterInfo> : public ThriftT
       const carbon::test::DummyThriftRequest& request,
       std::chrono::milliseconds timeout,
       RpcStatsContext* rpcStatsContext = nullptr) {
-    DestructorGuard dg(this);
 
     return sendSyncImpl([this, &request, timeout, rpcStatsContext] {
-      folly::Try<apache::thrift::RpcResponseComplete<carbon::test::DummyThriftReply>> reply;
-      if (auto* thriftClient = getThriftClient()) {
+      auto* thriftClient = getThriftClient();
+      if (LIKELY(thriftClient != nullptr)) {
         auto rpcOptions = getRpcOptions(timeout);
-        sendSyncHelper(thriftClient, request, rpcOptions, reply, rpcStatsContext);
+        return sendSyncHelper(thriftClient, request, rpcOptions, rpcStatsContext);
       } else {
-        reply.emplaceException(
+        return folly::Try<apache::thrift::RpcResponseComplete<carbon::test::DummyThriftReply>>(
             folly::make_exception_wrapper<apache::thrift::transport::TTransportException>(
               apache::thrift::transport::TTransportException::NOT_OPEN,
               "Error creating thrift client."));
       }
-      return reply;
     });
   }
 
@@ -248,20 +242,18 @@ class ThriftTransport<carbon::test::CarbonThriftTestRouterInfo> : public ThriftT
       const carbon::test::ThriftTestRequest& request,
       std::chrono::milliseconds timeout,
       RpcStatsContext* rpcStatsContext = nullptr) {
-    DestructorGuard dg(this);
 
     return sendSyncImpl([this, &request, timeout, rpcStatsContext] {
-      folly::Try<apache::thrift::RpcResponseComplete<carbon::test::ThriftTestReply>> reply;
-      if (auto* thriftClient = getThriftClient()) {
+      auto* thriftClient = getThriftClient();
+      if (LIKELY(thriftClient != nullptr)) {
         auto rpcOptions = getRpcOptions(timeout);
-        sendSyncHelper(thriftClient, request, rpcOptions, reply, rpcStatsContext);
+        return sendSyncHelper(thriftClient, request, rpcOptions, rpcStatsContext);
       } else {
-        reply.emplaceException(
+        return folly::Try<apache::thrift::RpcResponseComplete<carbon::test::ThriftTestReply>>(
             folly::make_exception_wrapper<apache::thrift::transport::TTransportException>(
               apache::thrift::transport::TTransportException::NOT_OPEN,
               "Error creating thrift client."));
       }
-      return reply;
     });
   }
 
@@ -269,25 +261,22 @@ class ThriftTransport<carbon::test::CarbonThriftTestRouterInfo> : public ThriftT
       const McVersionRequest& request,
       std::chrono::milliseconds timeout,
       RpcStatsContext* rpcStatsContext = nullptr) {
-    DestructorGuard dg(this);
 
     return sendSyncImpl([this, &request, timeout, rpcStatsContext] {
-      folly::Try<apache::thrift::RpcResponseComplete<McVersionReply>> reply;
-      if (auto* thriftClient = getThriftClient()) {
+      auto* thriftClient = getThriftClient();
+      if (LIKELY(thriftClient != nullptr)) {
         auto rpcOptions = getRpcOptions(timeout);
-        sendSyncHelper(thriftClient, request, rpcOptions, reply, rpcStatsContext);
+        return sendSyncHelper(thriftClient, request, rpcOptions, rpcStatsContext);
       } else {
-        reply.emplaceException(
+        return folly::Try<apache::thrift::RpcResponseComplete<McVersionReply>>(
             folly::make_exception_wrapper<apache::thrift::transport::TTransportException>(
               apache::thrift::transport::TTransportException::NOT_OPEN,
               "Error creating thrift client."));
       }
-      return reply;
     });
   }
 
  private:
-  std::unique_ptr<carbon::test::thrift::CarbonThriftTestAsyncClient> thriftClient_;
   FlushList* flushList_{nullptr};
 
   carbon::test::thrift::CarbonThriftTestAsyncClient* getThriftClient() {
@@ -299,7 +288,10 @@ class ThriftTransport<carbon::test::CarbonThriftTestRouterInfo> : public ThriftT
         channel->setFlushList(flushList_);
       }
     }
-    return thriftClient_.get();
+    if (LIKELY(thriftClient_.has_value())) {
+      return &thriftClient_.value();
+    }
+    return nullptr;
   }
 
   void resetClient() override final {

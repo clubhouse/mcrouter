@@ -39,8 +39,19 @@ struct RouterAdditionalLogger<
     typename Void<typename RouterInfo::AdditionalLogger>::type> {
   using type = typename RouterInfo::AdditionalLogger;
 };
-
 } // namespace detail
+
+template <class Logger, class Request, typename = std::enable_if_t<true>>
+class HasLogBeforeRequestSent : public std::false_type {};
+
+template <class Logger, class Request>
+class HasLogBeforeRequestSent<
+    Logger,
+    Request,
+    std::void_t<
+        decltype(std::declval<std::decay_t<Logger>&>().logBeforeRequestSent(
+            std::declval<Request>(),
+            std::declval<RequestLoggerContext>()))>> : public std::true_type {};
 
 template <class RouterInfo>
 class ProxyRequestContextWithInfo : public ProxyRequestContext {
@@ -96,10 +107,6 @@ class ProxyRequestContextWithInfo : public ProxyRequestContext {
           isErrorResult(finalResult_) ? 1 : 0);
       poolStats->addTotalDurationSample(nowUs() - startDurationUs_);
     }
-    if (reqComplete_) {
-      fiber_local<RouterInfo>::runWithoutLocals(
-          [this]() { reqComplete_(*this); });
-    }
   }
 
   /**
@@ -114,25 +121,28 @@ class ProxyRequestContextWithInfo : public ProxyRequestContext {
       RequestClass requestClass,
       const int64_t startTimeUs,
       const RequestLoggerContextFlags flags = RequestLoggerContextFlags::NONE) {
-    if (recording()) {
-      return;
-    }
+    if constexpr (HasLogBeforeRequestSent<AdditionalLogger, Request>::value) {
+      if (recording()) {
+        return;
+      }
 
-    RpcStatsContext rpcStatsContext;
-    RequestLoggerContext loggerContext(
-        poolName,
-        ap,
-        strippedRoutingPrefix,
-        requestClass,
-        startTimeUs,
-        /* endTimeUs */ 0,
-        carbon::Result::UNKNOWN,
-        rpcStatsContext,
-        /* networkTransportTimeUs */ 0,
-        {},
-        flags);
-    assert(additionalLogger_.hasValue());
-    additionalLogger_->logBeforeRequestSent(request, loggerContext);
+      RpcStatsContext rpcStatsContext;
+      RequestLoggerContext loggerContext(
+          poolName,
+          ap,
+          strippedRoutingPrefix,
+          requestClass,
+          startTimeUs,
+          /* endTimeUs */ 0,
+          carbon::Result::UNKNOWN,
+          rpcStatsContext,
+          /* networkTransportTimeUs */ 0,
+          {},
+          flags,
+          0);
+      assert(additionalLogger_.hasValue());
+      additionalLogger_->logBeforeRequestSent(request, loggerContext);
+    }
   }
 
   /**
@@ -172,11 +182,21 @@ class ProxyRequestContextWithInfo : public ProxyRequestContext {
         rpcStatsContext,
         networkTransportTimeUs,
         extraDataCallbacks,
-        flags);
+        flags,
+        fiber_local<RouterInfo>::getFailoverCount());
     assert(logger_.hasValue());
     logger_->template log<Request>(loggerContext);
     assert(additionalLogger_.hasValue());
     additionalLogger_->log(request, reply, loggerContext);
+  }
+
+  template <class KeyType>
+  bool mayLog(
+      const carbon::Keys<KeyType>& key,
+      const RequestClass& reqClass,
+      const carbon::Result& replyResult,
+      const int64_t durationUs) const {
+    return additionalLogger_->mayLog(key, reqClass, replyResult, durationUs);
   }
 
  public:
@@ -193,8 +213,9 @@ class ProxyRequestContextWithInfo : public ProxyRequestContext {
  protected:
   ProxyRequestContextWithInfo(
       Proxy<RouterInfo>& pr,
-      ProxyRequestPriority priority__)
-      : ProxyRequestContext(pr, priority__),
+      ProxyRequestPriority priority__,
+      const void* ptr = nullptr)
+      : ProxyRequestContext(pr, priority__, ptr),
         proxy_(pr),
         logger_(folly::in_place, pr),
         additionalLogger_(folly::in_place, *this) {}
@@ -214,9 +235,9 @@ class ProxyRequestContextWithInfo : public ProxyRequestContext {
             std::move(shardSplitCallback)),
         proxy_(pr) {}
 
+  int64_t startDurationUs_{nowUs()};
   folly::Optional<ProxyRequestLogger<RouterInfo>> logger_;
   folly::Optional<AdditionalLogger> additionalLogger_;
-  int64_t startDurationUs_{nowUs()};
 };
 
 template <class RouterInfo, class Request>
@@ -274,13 +295,22 @@ class ProxyRequestContextTyped
       Proxy<RouterInfo>& pr,
       const Request& req,
       ProxyRequestPriority priority__)
-      : ProxyRequestContextWithInfo<RouterInfo>(pr, priority__), req_(&req) {}
+      : ProxyRequestContextWithInfo<RouterInfo>(
+            pr,
+            priority__,
+            (const void*)&req) {}
 
   std::shared_ptr<const ProxyConfig<RouterInfo>> config_;
 
   // It's guaranteed to point to an existing request until we call user callback
   // (i.e. replied_ changes to true), after that it's nullptr.
-  const Request* req_;
+  const Request* typedRequest() {
+    return static_cast<const Request*>(this->ptr_);
+  }
+
+  void clearTypedRequest() {
+    this->ptr_ = nullptr;
+  }
 
   virtual void sendReplyImpl(ReplyT<Request>&& reply) = 0;
 

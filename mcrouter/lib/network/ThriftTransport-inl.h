@@ -10,51 +10,55 @@
 #include <memory>
 #include <type_traits>
 
+#include <folly/ExceptionWrapper.h>
+
 #ifndef LIBMC_FBTRACE_DISABLE
-#include "contextprop/cpp/serde/SerDeHelper.h"
-#include "contextprop/if/gen-cpp2/ContextpropConstants_constants.h"
+#include <contextprop/cpp/serde/SerDeHelper.h>
+#include <contextprop/if/gen-cpp2/ContextpropConstants_constants.h>
 #endif
 
 namespace facebook {
 namespace memcache {
 
 template <class ThriftClient>
-std::unique_ptr<ThriftClient> ThriftTransportBase::createThriftClient() {
+std::optional<ThriftClient> ThriftTransportBase::createThriftClient() {
+  std::optional<ThriftClient> client;
   channel_ = createChannel();
   if (!channel_) {
-    return nullptr;
+    return std::nullopt;
   }
-  auto ret = std::make_unique<ThriftClient>(channel_);
+  client = ThriftClient(channel_);
   // Avoid any static default-registered event handlers.
-  ret->clearEventHandlers();
-  return ret;
+  client->clearEventHandlers();
+  return client;
 }
 
-template <class F>
-auto ThriftTransportBase::sendSyncImpl(F&& sendFunc) {
-  typename std::result_of_t<F()>::element_type::response_type reply;
-  auto tryReply = sendFunc();
-
-  if (LIKELY(tryReply.hasValue() && tryReply->response.hasValue())) {
-    return std::move(*tryReply->response);
-  }
-
-  const auto& ew = tryReply.hasException() ? tryReply.exception()
-                                           : tryReply->response.exception();
+template <class T>
+FOLLY_NOINLINE auto ThriftTransportBase::makeError(
+    const ConnectionState oldState,
+    const folly::exception_wrapper& ew) {
+  T reply;
   if (ew.with_exception([&](const apache::thrift::transport::
                                 TTransportException& tex) {
         carbon::Result res;
         switch (tex.getType()) {
           case apache::thrift::transport::TTransportException::NOT_OPEN:
-          case apache::thrift::transport::TTransportException::ALREADY_OPEN:
-          case apache::thrift::transport::TTransportException::END_OF_FILE:
-          case apache::thrift::transport::TTransportException::SSL_ERROR:
-          case apache::thrift::transport::TTransportException::COULD_NOT_BIND:
-            if (connectionState_ == ConnectionState::Error &&
+            if ((oldState == ConnectionState::Down ||
+                 oldState == ConnectionState::Connecting) &&
                 connectionTimedOut_) {
               res = carbon::Result::CONNECT_TIMEOUT;
+            } else if (oldState == ConnectionState::Up) {
+              res = carbon::Result::REMOTE_ERROR;
             } else {
               res = carbon::Result::CONNECT_ERROR;
+            }
+            break;
+          case apache::thrift::transport::TTransportException::END_OF_FILE:
+            if (oldState == ConnectionState::Down ||
+                oldState == ConnectionState::Connecting) {
+              res = carbon::Result::CONNECT_ERROR;
+            } else {
+              res = carbon::Result::REMOTE_ERROR;
             }
             break;
           case apache::thrift::transport::TTransportException::TIMED_OUT:
@@ -66,6 +70,9 @@ auto ThriftTransportBase::sendSyncImpl(F&& sendFunc) {
           case apache::thrift::transport::TTransportException::INTERRUPTED:
             res = carbon::Result::ABORTED;
             break;
+          case apache::thrift::transport::TTransportException::ALREADY_OPEN:
+          case apache::thrift::transport::TTransportException::SSL_ERROR:
+          case apache::thrift::transport::TTransportException::COULD_NOT_BIND:
           default:
             // Using local_error as the default error now for a lack of better
             // options.
@@ -73,13 +80,41 @@ auto ThriftTransportBase::sendSyncImpl(F&& sendFunc) {
         }
         setReplyResultAndMessage(reply, res, tex.what());
       })) {
+  } else if (ew.with_exception(
+                 [&](const apache::thrift::TApplicationException& ex) {
+                   carbon::Result res = carbon::Result::REMOTE_ERROR;
+                   if (ex.getType() ==
+                       apache::thrift::TApplicationException::LOADSHEDDING) {
+                     res = carbon::Result::RES_TRY_AGAIN;
+                   }
+                   setReplyResultAndMessage(reply, res, ex.what());
+                 })) {
   } else if (ew.with_exception([&](const std::exception& e) {
                setReplyResultAndMessage(
                    reply, carbon::Result::LOCAL_ERROR, e.what());
              })) {
   }
-
   return reply;
+}
+
+template <class F>
+auto ThriftTransportBase::sendSyncImpl(F&& sendFunc) {
+  // Destructor guard used to keep transport alive when connecting
+  std::optional<DestructorGuard> dgConn;
+  ConnectionState oldState = connectionState_;
+  if (UNLIKELY(connectionState_ != ConnectionState::Up)) {
+    dgConn.emplace(this);
+  }
+  auto tryReply = sendFunc();
+
+  if (LIKELY(tryReply.hasValue() && tryReply->response.hasValue())) {
+    return std::move(*tryReply->response);
+  }
+
+  return makeError<typename std::result_of_t<F()>::element_type::response_type>(
+      oldState,
+      tryReply.hasException() ? tryReply.exception()
+                              : tryReply->response.exception());
 }
 
 #ifndef LIBMC_FBTRACE_DISABLE

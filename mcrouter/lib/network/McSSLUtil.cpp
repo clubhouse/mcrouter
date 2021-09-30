@@ -28,24 +28,24 @@ static McSSLUtil::SSLVerifyFunction& getAppFuncRef() {
   return VERIFIER;
 }
 
-static McSSLUtil::TransportFinalizeFunction& getServerFinalizeFuncRef() {
-  static McSSLUtil::TransportFinalizeFunction FINALIZER;
-  return FINALIZER;
-}
-
-static McSSLUtil::TransportFinalizeFunction& getClientFinalizeFuncRef() {
-  static McSSLUtil::TransportFinalizeFunction FINALIZER;
-  return FINALIZER;
-}
-
 static McSSLUtil::SSLToKtlsFunction& getKtlsFuncRef() {
   static McSSLUtil::SSLToKtlsFunction KTLSFUNC;
   return KTLSFUNC;
 }
 
+static McSSLUtil::DropCertificateX509PayloadFunction&
+getDropCertificateX509PayloadFuncRef() {
+  static McSSLUtil::DropCertificateX509PayloadFunction DROPCERTFUNC;
+  return DROPCERTFUNC;
+}
+
 static McSSLUtil::KtlsStatsFunction& getKtlsStatsFuncRef() {
   static McSSLUtil::KtlsStatsFunction KTLSFUNC;
   return KTLSFUNC;
+}
+static apache::thrift::ClientIdentityHook& getClientIdentityHookFuncRef() {
+  static apache::thrift::ClientIdentityHook CLIENTIDENTITYHOOKFUNC;
+  return CLIENTIDENTITYHOOKFUNC;
 }
 } // namespace
 
@@ -98,6 +98,17 @@ void McSSLUtil::setApplicationSSLVerifier(SSLVerifyFunction func) {
   getAppFuncRef() = std::move(func);
 }
 
+void McSSLUtil::setClientIdentityHook(apache::thrift::ClientIdentityHook func) {
+  folly::SharedMutex::WriteHolder wh(getMutex());
+  getClientIdentityHookFuncRef() = std::move(func);
+}
+
+void McSSLUtil::setDropCertificateX509PayloadFunction(
+    DropCertificateX509PayloadFunction func) {
+  folly::SharedMutex::WriteHolder wh(getMutex());
+  getDropCertificateX509PayloadFuncRef() = std::move(func);
+}
+
 bool McSSLUtil::verifySSL(
     folly::AsyncSSLSocket* sock,
     bool preverifyOk,
@@ -112,34 +123,8 @@ bool McSSLUtil::verifySSL(
   return func(sock, preverifyOk, ctx);
 }
 
-void McSSLUtil::setApplicationServerTransportFinalizer(
-    TransportFinalizeFunction func) {
-  folly::SharedMutex::WriteHolder wh(getMutex());
-  getServerFinalizeFuncRef() = std::move(func);
-}
-
-void McSSLUtil::setApplicationClientTransportFinalizer(
-    TransportFinalizeFunction func) {
-  folly::SharedMutex::WriteHolder wh(getMutex());
-  getClientFinalizeFuncRef() = std::move(func);
-}
-
-void McSSLUtil::finalizeServerTransport(
-    folly::AsyncTransportWrapper* transport) noexcept {
-  folly::SharedMutex::ReadHolder rh(getMutex());
-  auto& func = getServerFinalizeFuncRef();
-  if (func) {
-    func(transport);
-  }
-}
-
-void McSSLUtil::finalizeClientTransport(
-    folly::AsyncTransportWrapper* transport) noexcept {
-  folly::SharedMutex::ReadHolder rh(getMutex());
-  auto& func = getClientFinalizeFuncRef();
-  if (func) {
-    func(transport);
-  }
+apache::thrift::ClientIdentityHook McSSLUtil::getClientIdentityHook() noexcept {
+  return getClientIdentityHookFuncRef();
 }
 
 bool McSSLUtil::negotiatedPlaintextFallback(
@@ -213,6 +198,15 @@ folly::AsyncTransportWrapper::UniquePtr McSSLUtil::moveToKtls(
     return func(sock);
   }
   return nullptr;
+}
+
+void McSSLUtil::dropCertificateX509Payload(
+    folly::AsyncSSLSocket& sock) noexcept {
+  folly::SharedMutex::ReadHolder rh(getMutex());
+  auto& func = getDropCertificateX509PayloadFuncRef();
+  if (func) {
+    func(sock);
+  }
 }
 
 folly::Optional<SecurityTransportStats> McSSLUtil::getKtlsStats(

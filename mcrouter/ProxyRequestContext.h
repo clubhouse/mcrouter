@@ -160,18 +160,25 @@ class ProxyRequestContext {
     reqContextScopeGuard_.reset();
   }
 
+  void setRoutingHint(uint64_t hint) {
+    routingHint_ = hint;
+  }
+
+  uint64_t getRoutingHint() const {
+    return routingHint_;
+  }
+
  protected:
-  /**
-   * The function that will be called when all replies (including async)
-   * come back.
-   * Guaranteed to be called after enqueueReply_ (right after in sync mode).
-   */
-  void (*reqComplete_)(ProxyRequestContext& preq){nullptr};
+  // Keep on first cacheline. Used by ProxyRequestContextTyped
+  const void* ptr_{nullptr};
   carbon::Result finalResult_{carbon::Result::UNKNOWN};
   int32_t poolStatIndex_{-1};
   bool replied_{false};
 
-  ProxyRequestContext(ProxyBase& pr, ProxyRequestPriority priority__);
+  ProxyRequestContext(
+      ProxyBase& pr,
+      ProxyRequestPriority priority__,
+      const void* ptr = nullptr);
 
   enum RecordingT { Recording };
   ProxyRequestContext(
@@ -207,6 +214,11 @@ class ProxyRequestContext {
   bool processing_{false};
   bool recording_{false};
 
+  /** A host hint to be passed to the routing layer, if thread affinity is
+      enabled. This avoids having to perform host selection twice in the routing
+      layer. */
+  uint64_t routingHint_{0};
+
   /**
    * Functions to be executed before actual processing code.
    */
@@ -218,26 +230,6 @@ class ProxyRequestContext {
   ProxyRequestContext(ProxyRequestContext&&) noexcept = delete;
   ProxyRequestContext& operator=(const ProxyRequestContext&) = delete;
   ProxyRequestContext& operator=(ProxyRequestContext&&) = delete;
-
- public:
-  /* Do not use for new code */
-  class LegacyPrivateAccessor {
-   public:
-    using ReqCompleteFunc = void (*)(ProxyRequestContext&);
-
-    static ReqCompleteFunc& reqComplete(ProxyRequestContext& preq) {
-      return preq.reqComplete_;
-    }
-
-    static void*& context(ProxyRequestContext& preq) {
-      assert(!preq.recording_);
-      return preq.context_;
-    }
-
-    static bool& failoverDisabled(ProxyRequestContext& preq) {
-      return preq.failoverDisabled_;
-    }
-  };
 
  private:
   friend class ProxyBase;

@@ -87,10 +87,12 @@ class RouteHandlesCommandDispatcher {
         [&level]() { --level; },
         nullptr,
         [&tree, &level](
-            const HostInfoPtr& host, const RequestClass& /* unused */) {
+            const HostWithShard& hostWithShard,
+            const RequestClass& /* unused */) {
+          const auto& host = hostWithShard.first;
           bool haveHost = (host != nullptr);
           tree.append(
-              std::string(level + 1, ' ') + "host: " +
+              std::string(level, ' ') + "host: " +
               (haveHost ? host->location().getIp() : "unknown") + " port:" +
               (haveHost ? folly::to<std::string>(host->location().getPort())
                         : "unknown") +
@@ -382,6 +384,31 @@ ServiceInfo<RouterInfo>::ServiceInfoImpl::ServiceInfoImpl(
         }
         return toPrettySortedJson(result);
       });
+  commands_.emplace(
+      "test_replace_ap", [this](const std::vector<folly::StringPiece>& args) {
+        auto& configApi = proxy_.router().configApi();
+        if (args.size() != 3) {
+          return "Error";
+        }
+        auto arg1 = args[1].str();
+        auto arg2 = args[2].str();
+        auto idx1 = arg1.find(":");
+        auto idx2 = arg2.find(":");
+        if (idx1 == std::string::npos || idx2 == std::string::npos) {
+          return "Error";
+        }
+        // As a safety check, allow this only for loopback addresses
+        auto host1 = arg1.substr(0, idx1);
+        auto host2 = arg2.substr(0, idx2);
+        if (!folly::IPAddress(host1).isLoopback() ||
+            !folly::IPAddress(host2).isLoopback()) {
+          return "Error";
+        }
+        facebook::memcache::mcrouter::ConfigApi::PartialUpdate update = {
+            args[0].str(), arg1, arg2, 1, 1, 11111, "", 1};
+        configApi.addPartialUpdateForTest(update);
+        return "Success";
+      });
 
   commands_.emplace(
       "pools", [&config](const std::vector<folly::StringPiece>& /* args */) {
@@ -395,6 +422,29 @@ ServiceInfo<RouterInfo>::ServiceInfoImpl::ServiceInfoImpl(
           }
           result[pool.first] = servers;
         }
+        return toPrettySortedJson(result);
+      });
+
+  commands_.emplace(
+      "failure_domains", [this](const std::vector<folly::StringPiece>& args) {
+        if (args.size() != 1) {
+          throw std::runtime_error("failure_domains: 1 arg expected");
+        }
+        auto& configApi = proxy_.router().configApi();
+        auto& accessPoints = proxy_.getConfigUnsafe()->getAccessPoints();
+        folly::dynamic result = folly::dynamic::object;
+        auto it = accessPoints.find(args[0].str());
+        if (it != accessPoints.end()) {
+          for (auto it2 = it->second.begin(); it2 != it->second.end(); it2++) {
+            auto ap = *it2;
+            auto failureDomain = ap->getFailureDomain();
+            result[ap->toHostPortString()] = fmt::format(
+                "{}({})",
+                failureDomain,
+                configApi.getFailureDomainStr(failureDomain));
+          }
+        }
+
         return toPrettySortedJson(result);
       });
 }
