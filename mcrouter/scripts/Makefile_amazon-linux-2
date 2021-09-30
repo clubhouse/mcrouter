@@ -6,20 +6,18 @@
 RECIPES_DIR := ./recipes
 MCROUTER_ARCHIVE := mcrouter.$(shell git rev-parse --short=12 HEAD).$(shell uname -m).tar.gz
 
-all: deps mcrouter
-
-deps: .jemalloc-done .boost-done .zstd-done .fmt-done .gflags-done .folly-done .fizz-done .wangle-done .fbthrift-done
-# .fbthrift-done .folly-done .fizz-done .wangle-done .fmt-done .zstd-done .glog-done .gflags-done
+deps: .jemalloc-done .boost-done .zstd-done .gflags-done .glog-done .fmt-done .folly-done .fizz-done .wangle-done .fbthrift-done
 	touch $@
 
 mcrouter:
 	${RECIPES_DIR}/mcrouter.sh $(PKG_DIR) $(INSTALL_DIR) $(INSTALL_AUX_DIR)
 	touch $@
 
-$(MCROUTER_ARCHIVE): mcrouter
-	./slim-archive.sh $(INSTALL_DIR) $@
+all: .jemalloc-done .boost-done .zstd-done .gflags-done .glog-done .fmt-done .folly-done .fizz-done .wangle-done .fbthrift-done mcrouter
+	touch $@
 
-archive: $(MCROUTER_ARCHIVE)
+archive:
+	./slim-archive.sh $(INSTALL_DIR) $(MCROUTER_ARCHIVE)
 
 # jemalloc is available from the package repositories, but then we get this warning at mcrouter startup:
 # <jemalloc>: Error in munmap(): Invalid argument which corresponds to https://github.com/jemalloc/jemalloc/issues/467
@@ -37,27 +35,32 @@ archive: $(MCROUTER_ARCHIVE)
 	${RECIPES_DIR}/boost.sh $(PKG_DIR) $(INSTALL_DIR) $(INSTALL_AUX_DIR)
 	touch $@
 
-.zstd-done: .jemalloc-done
+.zstd-done: .jemalloc-done .boost-done
 	${RECIPES_DIR}/zstd.sh $(PKG_DIR) $(INSTALL_DIR) $(INSTALL_AUX_DIR)
 	touch $@
 
-# The version of fmt from the package repositories is insufficient to satisfy the "folly" build.
-.fmt-done: .boost-done .jemalloc-done
-	${RECIPES_DIR}/fmtlib.sh $(PKG_DIR) $(INSTALL_DIR) $(INSTALL_AUX_DIR)
-	touch $@
-
 # The version of gflags in the repo is insufficient for compiling mcrouter
-.gflags-done: .boost-done .jemalloc-done
+.gflags-done: .boost-done .jemalloc-done .zstd-done
 	${RECIPES_DIR}/gflags.sh $(PKG_DIR) $(INSTALL_DIR) $(INSTALL_AUX_DIR)
 	touch $@
 
-.folly-done: .boost-done .jemalloc-done .fmt-done
-### # .zstd-done .glog-done .gflags-done .fmt-done
+# The version of glog in the repo is insufficient for compiling folly.
+# Additionally, the most recent (HEAD / v0.5.0.rc2) revision from upstream is incompatible for compiling mcrouter.
+# Fortunately, v0.4.0 works for both, so we just check out that revision.
+.glog-done: .gflags-done .boost-done .jemalloc-done
+	${RECIPES_DIR}/glog.sh $(PKG_DIR) $(INSTALL_DIR) $(INSTALL_AUX_DIR)
+	touch $@
+
+# The version of fmt from the package repositories is insufficient to satisfy the "folly" build.
+.fmt-done: .jemalloc-done .boost-done .glog-done .gflags-done
+	${RECIPES_DIR}/fmtlib.sh $(PKG_DIR) $(INSTALL_DIR) $(INSTALL_AUX_DIR)
+	touch $@
+
+.folly-done: .jemalloc-done .boost-done .fmt-done .glog-done .gflags-done
 	${RECIPES_DIR}/folly.sh $(PKG_DIR) $(INSTALL_DIR) $(INSTALL_AUX_DIR)
 	touch $@
 
-.fizz-done: .boost-done .jemalloc-done .folly-done .gflags-done
-### .glog-done .gflags-done
+.fizz-done: .boost-done .jemalloc-done .folly-done .glog-done .gflags-done
 	${RECIPES_DIR}/fizz.sh $(PKG_DIR) $(INSTALL_DIR) $(INSTALL_AUX_DIR)
 	touch $@
 
@@ -69,19 +72,3 @@ archive: $(MCROUTER_ARCHIVE)
 .fbthrift-done: .folly-done .fizz-done .wangle-done .fmt-done .glog-done .gflags-done .boost-done .jemalloc-done
 	${RECIPES_DIR}/fbthrift.sh $(PKG_DIR) $(INSTALL_DIR) $(INSTALL_AUX_DIR)
 	touch $@
-
-
-
-
-# The version of glog in the repo is insufficient for compiling folly.
-# Additionally, the most recent (HEAD / v0.5.0.rc2) revision from upstream is incompatible for compiling mcrouter.
-# Fortunately, v0.4.0 works for both, so we just check out that revision.
-.glog-done: .gflags-done .boost-done .jemalloc-done
-	${RECIPES_DIR}/glog.sh $(PKG_DIR) $(INSTALL_DIR) $(INSTALL_AUX_DIR)
-	touch $@
-
-
-
-
-
-
