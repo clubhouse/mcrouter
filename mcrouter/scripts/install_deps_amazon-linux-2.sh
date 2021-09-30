@@ -6,7 +6,7 @@
 
 set -ex
 
-sudo yum install -y epel-release
+sudo amazon-linux-extras install -y epel
 
 sudo yum groupinstall -y "Development Tools"
 sudo yum install -y \
