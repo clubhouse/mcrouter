@@ -4,8 +4,20 @@
 # LICENSE file in the root directory of this source tree.
 
 RECIPES_DIR := ./recipes
+MCROUTER_ARCHIVE := mcrouter.$(shell git rev-parse --short=12 HEAD).$(shell uname -m).tar.gz
 
-all: mcrouter
+deps: .jemalloc-done .boost-done .zstd-done .gflags-done .glog-done .fmt-done .folly-done .fizz-done .wangle-done .fbthrift-done
+	touch $@
+
+mcrouter:
+	${RECIPES_DIR}/mcrouter.sh $(PKG_DIR) $(INSTALL_DIR) $(INSTALL_AUX_DIR)
+	touch $@
+
+all: .jemalloc-done .boost-done .zstd-done .gflags-done .glog-done .fmt-done .folly-done .fizz-done .wangle-done .fbthrift-done mcrouter
+	touch $@
+
+archive:
+	./slim-archive.sh $(INSTALL_DIR) $(MCROUTER_ARCHIVE)
 
 # jemalloc is available from the package repositories, but then we get this warning at mcrouter startup:
 # <jemalloc>: Error in munmap(): Invalid argument which corresponds to https://github.com/jemalloc/jemalloc/issues/467
@@ -13,7 +25,7 @@ all: mcrouter
 # page sizes and no error.
 .jemalloc-done:
     # We set "LDFLAGS" in the "get_and_build_by_make.sh" script that tells all
-    # projects to link against jemalloc.  We unset that when we actually compile jemalloc.
+    # projects to link against jemalloc. We unset that when we actually compile jemalloc.
 	LDFLAGS="" ${RECIPES_DIR}/jemalloc.sh $(PKG_DIR) $(INSTALL_DIR) $(INSTALL_AUX_DIR)
 	touch $@
 
@@ -23,13 +35,12 @@ all: mcrouter
 	${RECIPES_DIR}/boost.sh $(PKG_DIR) $(INSTALL_DIR) $(INSTALL_AUX_DIR)
 	touch $@
 
-# The version of fmt from the package repositories is insufficient to satisfy the "folly" build.
-.fmt-done: .boost-done .jemalloc-done
-	${RECIPES_DIR}/fmtlib.sh $(PKG_DIR) $(INSTALL_DIR) $(INSTALL_AUX_DIR)
+.zstd-done: .jemalloc-done .boost-done
+	${RECIPES_DIR}/zstd.sh $(PKG_DIR) $(INSTALL_DIR) $(INSTALL_AUX_DIR)
 	touch $@
 
 # The version of gflags in the repo is insufficient for compiling mcrouter
-.gflags-done: .boost-done .jemalloc-done
+.gflags-done: .boost-done .jemalloc-done .zstd-done
 	${RECIPES_DIR}/gflags.sh $(PKG_DIR) $(INSTALL_DIR) $(INSTALL_AUX_DIR)
 	touch $@
 
@@ -40,36 +51,24 @@ all: mcrouter
 	${RECIPES_DIR}/glog.sh $(PKG_DIR) $(INSTALL_DIR) $(INSTALL_AUX_DIR)
 	touch $@
 
-.zstd-done: .jemalloc-done
-	${RECIPES_DIR}/zstd.sh $(PKG_DIR) $(INSTALL_DIR) $(INSTALL_AUX_DIR)
+# The version of fmt from the package repositories is insufficient to satisfy the "folly" build.
+.fmt-done: .jemalloc-done .boost-done .glog-done .gflags-done
+	${RECIPES_DIR}/fmtlib.sh $(PKG_DIR) $(INSTALL_DIR) $(INSTALL_AUX_DIR)
 	touch $@
 
-.folly-done: .zstd-done .glog-done .gflags-done .boost-done .fmt-done .jemalloc-done
+.folly-done: .jemalloc-done .boost-done .fmt-done .glog-done .gflags-done
 	${RECIPES_DIR}/folly.sh $(PKG_DIR) $(INSTALL_DIR) $(INSTALL_AUX_DIR)
 	touch $@
 
-.fizz-done: .folly-done .glog-done .gflags-done .boost-done .jemalloc-done
+.fizz-done: .boost-done .jemalloc-done .folly-done .glog-done .gflags-done
 	${RECIPES_DIR}/fizz.sh $(PKG_DIR) $(INSTALL_DIR) $(INSTALL_AUX_DIR)
 	touch $@
 
 .wangle-done: .folly-done .fizz-done .glog-done .gflags-done .boost-done .jemalloc-done
+	# Wangle explicity depends on Fizz. Keep these versions aligned
 	${RECIPES_DIR}/wangle.sh $(PKG_DIR) $(INSTALL_DIR) $(INSTALL_AUX_DIR)
 	touch $@
 
 .fbthrift-done: .folly-done .fizz-done .wangle-done .fmt-done .glog-done .gflags-done .boost-done .jemalloc-done
 	${RECIPES_DIR}/fbthrift.sh $(PKG_DIR) $(INSTALL_DIR) $(INSTALL_AUX_DIR)
 	touch $@
-
-deps: .fbthrift-done .folly-done .fizz-done .wangle-done .fmt-done .zstd-done .glog-done .gflags-done .boost-done .jemalloc-done
-	touch $@
-
-mcrouter: .fbthrift-done .folly-done .fizz-done .wangle-done .fmt-done .zstd-done .glog-done .gflags-done .boost-done .jemalloc-done
-	${RECIPES_DIR}/mcrouter.sh $(PKG_DIR) $(INSTALL_DIR) $(INSTALL_AUX_DIR)
-	touch $@
-
-MCROUTER_ARCHIVE := mcrouter.$(shell git rev-parse --short=12 HEAD).$(shell uname -m).tar.gz
-
-$(MCROUTER_ARCHIVE): mcrouter
-	./slim-archive.sh $(INSTALL_DIR) $@
-
-archive: $(MCROUTER_ARCHIVE)

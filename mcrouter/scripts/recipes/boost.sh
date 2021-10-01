@@ -7,9 +7,9 @@
 source common.sh
 
 if [ ! -d "$PKG_DIR/boost" ]; then
-    wget https://boostorg.jfrog.io/artifactory/main/release/1.76.0/source/boost_1_76_0.tar.gz
-    tar xzf boost_1_76_0.tar.gz
-    mv boost_1_76_0 boost
+    wget https://boostorg.jfrog.io/artifactory/main/release/1.77.0/source/boost_1_77_0.tar.gz
+    tar xzf boost_1_77_0.tar.gz
+    mv boost_1_77_0 boost
     rm -f boost*.tar.gz
 fi
 

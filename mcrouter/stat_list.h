@@ -173,6 +173,7 @@ STUI(request_replied_count, 0, 1)
 #undef GROUP
 #define GROUP ods_stats | detailed_stats | rate_stats
 STUIR(request_sent, 0, 1)
+STUIR(request_has_crypto_auth_token, 0, 1)
 STUIR(request_error, 0, 1)
 STUIR(request_success, 0, 1)
 STUIR(request_replied, 0, 1)
@@ -333,6 +334,9 @@ STUI(config_last_attempt, 0, 0)
 STUI(config_last_success, 0, 0)
 STUI(config_failures, 0, 0)
 STUI(configs_from_disk, 0, 0)
+STUI(config_partial_reconfig_attempt, 0, 0)
+STUI(config_partial_reconfig_success, 0, 0)
+STUI(config_full_attempt, 0, 0)
 #undef GROUP
 
 /* Declaring external stats */
@@ -378,7 +382,7 @@ EXTERNAL_STAT(prefix_acl_timeout_count)
 EXTERNAL_STAT(prefix_acl_checker_count)
 EXTERNAL_STAT(prefix_acl_count)
 EXTERNAL_STAT(prefix_acl_refresh_attempts)
-EXTERNAL_STAT(prefix_acl_refresh_lock_fail)
+EXTERNAL_STAT(prefix_acl_concurrent_refresh_fail)
 EXTERNAL_STAT(prefix_acl_refresh_success)
 EXTERNAL_STAT(prefix_acl_refresh_timeout)
 EXTERNAL_STAT(prefix_acl_refresh_error)

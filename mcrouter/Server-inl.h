@@ -374,6 +374,9 @@ bool runServerDual(
         std::make_shared<ServerOnRequestThrift<RouterInfo>>(
             serverOnRequestMap));
 
+    // Add Identity Hook
+    thriftServer->setClientIdentityHook(McSSLUtil::getClientIdentityHook());
+
     // ACL Checker for ThriftServer
     auto aclCheckerThrift =
         detail::getThriftAclChecker(mcrouterOpts, standaloneOpts);
@@ -417,7 +420,7 @@ bool runServerDual(
 
     initStandaloneSSLDualServer(standaloneOpts, thriftServer);
     thriftServer->watchTicketPathForChanges(
-        standaloneOpts.tls_ticket_key_seed_path, true);
+        standaloneOpts.tls_ticket_key_seed_path);
     thriftServer->setStopWorkersOnStopListening(false);
 
     // Get acl checker for AsyncMcServer

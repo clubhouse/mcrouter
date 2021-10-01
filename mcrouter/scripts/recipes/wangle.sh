@@ -13,7 +13,7 @@ fi
 cd "$PKG_DIR/wangle" || die "cd fail"
 
 # Use a known compatible version
-gitEnsureTreeish v2021.04.26.00
+gitEnsureTreeish v2021.09.27.00
 
 cd "$PKG_DIR/wangle/wangle/" || die "cd fail"
 

@@ -13,7 +13,11 @@ fi
 cd "$PKG_DIR/fbthrift" || die "cd fail"
 
 # Use a known compatible version
-gitEnsureTreeish v2021.04.26.00
+# v2020.08.24.00
+#   Published stable release - CMake linking errors
+# v2021.09.27.00
+#   This needs to be linked closely to Folly and this version works well with extra linking fix in mcrouter
+gitEnsureTreeish v2021.09.27.00
 
 cd "$PKG_DIR/fbthrift/build" || die "cd fbthrift failed"
 

@@ -156,8 +156,19 @@ apache::thrift::RocketClientChannel::Ptr ThriftTransportBase::createChannel() {
   }
   auto channel =
       apache::thrift::RocketClientChannel::newChannel(std::move(socket));
-  channel->setProtocolId(apache::thrift::protocol::T_COMPACT_PROTOCOL);
   channel->setCloseCallback(this);
+  if (connectionOptions_.thriftCompression) {
+    apache::thrift::CodecConfig codec;
+    codec.zstdConfig_ref() = apache::thrift::ZstdCompressionCodecConfig();
+    apache::thrift::CompressionConfig compressionConfig;
+    if (connectionOptions_.thriftCompressionThreshold > 0) {
+      compressionConfig.compressionSizeLimit_ref() =
+          connectionOptions_.thriftCompressionThreshold;
+    }
+    compressionConfig.codecConfig_ref() = std::move(codec);
+    channel->setDesiredCompressionConfig(std::move(compressionConfig));
+  }
+
   return channel;
 #else
   return nullptr;
@@ -169,7 +180,6 @@ void ThriftTransportBase::connectSuccess() noexcept {
   assert(
       transport != nullptr && connectionState_ == ConnectionState::Connecting);
   connectionState_ = ConnectionState::Up;
-  McSSLUtil::finalizeClientTransport(transport);
   if (isAsyncSSLSocketMech(connectionOptions_.accessPoint->getSecurityMech())) {
     if (authorizationCallbacks_.onAuthorize &&
         !authorizationCallbacks_.onAuthorize(
@@ -243,7 +253,8 @@ void ThriftTransportUtil::traceRequestImpl(
 
 void ThriftTransportUtil::traceResponseImpl(
     carbon::MessageCommon& response,
-    const std::map<std::string, std::string>& responseHeaders) {
+    const apache::thrift::transport::THeader::StringToStringMap&
+        responseHeaders) {
   auto artilleryTraceIDs = contextprop::SerDeHelper::decodeAndDeserialize<
       facebook::contextprop::ArtilleryTraceIDs>(
       responseHeaders,

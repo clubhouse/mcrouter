@@ -452,7 +452,7 @@ MCROUTER_OPTION_STRING(
 MCROUTER_OPTION_INTEGER(
     int,
     max_dumped_config_age,
-    1 * 60 * 60 /* 1 hour */,
+    12 * 60 * 60 /* 12 hours */,
     "max-dumped-config-age",
     no_short,
     "Max age of backup config files that mcrouter is allowed to use"
@@ -853,6 +853,15 @@ MCROUTER_OPTION_TOGGLE(
     "Incrementally update routing tree with simple config source changes. For "
     " complicated config source change, Mcrouter will resort to build a new "
     "routing tree as if this flag is disabled.")
+
+MCROUTER_OPTION_INTEGER(
+    size_t,
+    thrift_compression_threshold,
+    0,
+    "thrift-compression-threshold",
+    no_short,
+    "Payloads >= thriftCompressionTreshold will be compressed "
+    "iff thriftCompression is enabled.")
 
 #ifdef ADDITIONAL_OPTIONS_FILE
 #include ADDITIONAL_OPTIONS_FILE
