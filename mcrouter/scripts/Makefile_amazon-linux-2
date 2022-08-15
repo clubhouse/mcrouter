@@ -9,7 +9,7 @@ MCROUTER_ARCHIVE := mcrouter.$(shell git rev-parse --short=12 HEAD).$(shell unam
 deps: .jemalloc-done .boost-done .zstd-done .gflags-done .glog-done .fmt-done .folly-done .fizz-done .wangle-done .fbthrift-done
 	touch $@
 
-mcrouter:
+mcrouter: deps
 	${RECIPES_DIR}/mcrouter.sh $(PKG_DIR) $(INSTALL_DIR) $(INSTALL_AUX_DIR)
 	touch $@
 
